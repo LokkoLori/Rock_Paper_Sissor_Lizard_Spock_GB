@@ -9,7 +9,7 @@
 #define RSPLS_SPOCK 4
 #define RSPLS_UNDEF 128
 
-#define GAME_CODE 123
+#define GAME_CODE 31
 
 #define PH_MATCHMAKING 0
 #define PH_CHOOSING 1
@@ -36,6 +36,8 @@ int opponent_choise = RSPLS_UNDEF;
 int my_choise = RSPLS_ROCK;
 int game_phase = PH_MATCHMAKING;
 int i = 0;
+int j = 0;
+int d = 0;
 int seed = 0;
 int seedinited = 0;
 int points_mine = 0;
@@ -43,37 +45,35 @@ int points_his = 0;
 
 void matchmaking(){
 	
+	printf("READY.GAME.JAM!\n\n");
 	for (i=0;i<5;i++){
 		printf("%s\n", RSPLS_NAMES[i]);
 	}
-	printf("%\n\n");
-	//_io_out = GAME_CODE;
-	//send_byte();
-	//while (_io_status == IO_SENDING);
-    //
-	//if (_io_status == IO_IDLE){
-	//	player_num = 2;
-	//	printf("Joined to the game, you are player 2\n");
-	//} else {
-	//	printf("Waiting for player 2\nPress A for single player mode\n");
-	//	receive_byte();
-	//	while (_io_status == IO_RECEIVING){
-	//		if (joypad() == J_A) {
-	//			printf("Single player mode selected\n");
-	//			player_num = 0;
-	//			break;
-	//		}
-	//	}
-	//	if (player_num != 0) {
-	//		if ((int)_io_in == GAME_CODE){
-	//			printf("Player 2 has joined the game\n");
-	//		} else {
-	//			printf("GAME_CODE got %d\nGoto single player mode\n", (int)_io_in);
-	//			player_num = 0;
-	//		}
-	//	}
-	//}
+	printf("\n\nStart = Host game\nA = join to game\nB = single play\n\n");
 	
+	while (1){
+		if (joypad() == J_B) {
+			waitpadup();
+			printf("Single player mode\n\n");
+			player_num = 0;
+			break;
+		}		
+		if (joypad() == J_A) {
+			waitpadup();
+			printf("Joining game\n\n");
+			player_num = 2;
+			//todo: checking host
+			break;
+		}
+		if (joypad() == J_START) {
+			waitpadup();
+			printf("Hosting game\n\n");
+			player_num = 1;
+			//todo: wainting player
+			break;
+		}
+	}
+		
 	game_phase = PH_CHOOSING;
 }
 
@@ -89,17 +89,10 @@ void selection_changed(){
 	
 
 void choosing(){
-	//if (player_num == 2 && opponent_choise == RSPLS_UNDEF){
-	//	if (_io_status != IO_RECEIVING){
-	//		receive_byte();
-	//	}
-	//	if ( _io_status == IO_IDLE){
-	//		opponent_choise = (int)_io_in;
-	//	}
-	//}
-	//if (my_choise != RSPLS_UNDEF){
-	//	
-	//}
+	
+	if (player_num == 2) {
+		receive_byte();
+	}
 	
 	selection_changed();
 	while(1){
@@ -127,10 +120,34 @@ void choosing(){
 		//printf("rand inited with seed: %d\n", seed);
 		seedinited = 1;
 	}
-	opponent_choise = rand();
-	if (opponent_choise<0)
-		opponent_choise = -opponent_choise;
-	opponent_choise = opponent_choise % 5;
+	
+	if (player_num == 0) {
+		
+		// single player random with opponent
+		opponent_choise = rand();
+		if (opponent_choise<0)
+			opponent_choise = -opponent_choise;
+		opponent_choise = opponent_choise % 5;
+	} else if (player_num == 1) {
+		//player 1 startegie: send first, recevieve after
+		_io_out = my_choise;
+		send_byte();
+		while (_io_status == IO_SENDING);
+		
+		receive_byte();
+		while (_io_status == IO_RECEIVING);
+		opponent_choise = (int)_io_in;
+		
+	} else if (player_num == 2) {
+		
+		//player 2 startegie: recevieve first, then send
+		while (_io_status == IO_RECEIVING);
+		opponent_choise = (int)_io_in;
+		
+		_io_out = my_choise;
+		send_byte();
+		while (_io_status == IO_SENDING);
+	}
 	
 	//opponent_choise = 4; //fixed select for testing
 	
